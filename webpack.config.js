@@ -1,4 +1,5 @@
 const webpack = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin')
 const path = require('path');
 
 module.exports = {
@@ -11,7 +12,7 @@ module.exports = {
 
         //utils: './lib/utils.ts',
         // windowlib: './lib/windowlib.ts',
-        index: './index.html.ts'
+        index: './public/index.html.ts'
     },
     output: {
         path: path.join(__dirname, 'build'),
@@ -65,6 +66,9 @@ module.exports = {
             test: /\.(gif|png|jpg|svg)$/,
             // 画像をBase64として取り込む
             type: "asset/inline",
+        }, {
+            test: /\.html$/,
+            loader: "html-loader"
         }, ],
     },
     resolve: {
@@ -80,6 +84,9 @@ module.exports = {
             'window.jQuery': 'jquery',
             Popper: ['popper.js', 'default'],
             // bootstrap: "bootstrap",
+        }),
+        new HtmlWebpackPlugin({
+            template: "./public/index.html"
         })
     ],
     optimization: {
