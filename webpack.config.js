@@ -2,7 +2,11 @@ const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const path = require('path');
 
-module.exports = {
+
+const isProduction = process.env.NODE_ENV == "production";
+
+
+const config = {
     mode: 'development',
     //mode: 'production',
     entry: {
@@ -86,7 +90,8 @@ module.exports = {
             // bootstrap: "bootstrap",
         }),
         new HtmlWebpackPlugin({
-            template: "./public/index.html"
+            template: "./public/index.html",
+            scriptLoading: 'defer'
         })
     ],
     optimization: {
@@ -99,5 +104,14 @@ module.exports = {
         maxEntrypointSize: Infinity,
         maxAssetSize: Infinity
     },
-    devtool: "source-map",
 }
+
+module.exports = () => {
+    if (isProduction) {
+        config.mode = "production";
+    } else {
+        config.mode = "development";
+        config.devtool = "source-map";
+    }
+    return config;
+};
