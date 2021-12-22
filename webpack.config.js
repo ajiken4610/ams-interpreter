@@ -90,7 +90,8 @@ const config = {
             // bootstrap: "bootstrap",
         }),
         new HtmlWebpackPlugin({
-            template: "./public/index.html"
+            template: "./public/index.html",
+            scriptLoading: 'defer'
         })
     ],
     optimization: {

@@ -1,6 +1,9 @@
 # Exe files
 *.exe
 
+# build
+build/
+
 # Logs
 logs
 *.log
