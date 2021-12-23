@@ -25,9 +25,9 @@ class StringIterator implements Iterator<string> {
   }
 }
 
-class AMSVariableMap<T> {
+export class AMSVariableMap<T> {
   private map;
-  public constructor(parent: AMSVariableMap<T>) {
+  public constructor(parent?: AMSVariableMap<T>) {
     this.map = parent ? Object.create(parent.getMap()) : {};
   }
   public has(name: string): boolean {
@@ -97,4 +97,8 @@ export abstract class AbsAMSObject {
 
   protected abstract invokeWithinArguments(parent: AbsAMSObject): AbsAMSObject;
   protected abstract invokeWithoutArguments(): AbsAMSObject;
+
+  public parseFromText(iterator: StringIterator): AbsAMSObject {
+    return this;
+  }
 }
