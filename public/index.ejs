@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AjiMarkupScript | インタプリタ</title>
+    <meta charset="utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+</head>
+
+<body>
+    <%= htmlWebpackPlugin.tags.headTags %>
+        <!--</%=>-->
+        <%= htmlWebpackPlugin.tags.bodyTags %>
+            <!--</%=>-->
+
+            <div id="viewport">
+                <div id="nabvar">
+                    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                        <div class="container-fluid">
+                            <a class="navbar-brand" href="#about">タスク管理</a>
+                            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+                            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                                <ul class="navbar-nav me-auto mb-2 mb-lg-0 mr-auto">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" aria-current="page" href="#about">Home</a
+                  >
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link if-signined" href="#app">App</a>
+                                    </li>
+
+                                    <!--<li class="nav-item"><a class="nav-link if-signined" href="#tl">Tasks</a></li>-->
+                                    <li class="nav-item">
+                                        <a class="nav-link if-signined" href="#ml">Metas</a>
+                                    </li>
+
+                                    <!--<li class="nav-item dropdown if-signined">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Actions
+                            </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                    <li><a class="dropdown-item" href="#tl">Tasks</a></li>
+                                    <li><a class="dropdown-item" href="#ml">Custom Meta</a></li>
+                                    
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" href="#">Something else here</a></li>
+                                
+                                </ul>
+                            </li>-->
+                                </ul>
+                                <ul class="list-inline navbar-nav" style="margin-block-end: 0">
+                                    <li class="nav-item list-inline-item unless-signined" id="nav-login-button">
+                                        <a class="text-reset nav-link" href="#login" style="display: inline">Login</a
+                  >
+                </li>
+                <li
+                  class="nav-item list-inline-item if-signined"
+                  id="nav-user-icon"
+                >
+                  <a href="#account" class="nav-link" style="padding: 0">
+                    <img
+                      class="border border-primary rounded-circle"
+                      height="32px"
+                    />
+                  </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </nav>
+                </div>
+
+                <div class="toast-container" id="toast-container">
+                    <div class="toast d-flex align-items-center" id="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                        <strong>
+            <div class="toast-body" id="toast-body"></div>
+          </strong>
+                        <button type="button" class="btn-close ms-auto me-2" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+
+                <div id="fragment-container" class="fragment-container"></div>
+            </div>
+</body>
+
+</html>
