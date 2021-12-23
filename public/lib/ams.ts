@@ -87,15 +87,15 @@ class AMSException {
  */
 export abstract class AbsAMSObject {
   public constructor(args: AbsAMSObject) {}
-  public invoke(parent: AbsAMSObject): AbsAMSObject {
-    if (parent) {
-      return this.invokeWithinArguments(parent);
+  public invoke(args: AbsAMSObject): AbsAMSObject {
+    if (args) {
+      return this.invokeWithinArguments(args);
     } else {
       return this.invokeWithoutArguments();
     }
   }
 
-  protected abstract invokeWithinArguments(parent: AbsAMSObject): AbsAMSObject;
+  protected abstract invokeWithinArguments(args: AbsAMSObject): AbsAMSObject;
   protected abstract invokeWithoutArguments(): AbsAMSObject;
 
   public parseFromText(iterator: StringIterator): AbsAMSObject {
