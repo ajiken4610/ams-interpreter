@@ -63,7 +63,10 @@ const config = {
             test: require.resolve("jquery"),
             loader: "expose-loader",
             options: {
-                exposes: ["$", "jQuery"],
+                exposes: [
+                    { globalName: "$" },
+                    { globalName: "jQuery" }
+                ],
             },
         }, {
             // 対象となるファイルの拡張子
@@ -91,8 +94,7 @@ const config = {
         }),
         new HtmlWebpackPlugin({
             template: "./public/index.ejs",
-            scriptLoading: 'defer',
-            inject: false
+            inject: false,
         })
     ],
     optimization: {
