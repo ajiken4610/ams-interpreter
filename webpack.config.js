@@ -103,7 +103,7 @@ const config = {
         }),
         new HtmlWebpackPlugin({
             template: "./public/index.ejs",
-            inject: false,
+            inject: "head",
             scriptLoading: "blocking",
         })
     ],
