@@ -1,5 +1,5 @@
 import * as Utils from "./utils";
-import "./windowlib.css";
+
 import "bootstrap";
 
 /**
