@@ -63,16 +63,28 @@ const config = {
             test: require.resolve("jquery"),
             loader: "expose-loader",
             options: {
-                exposes: ["$", "jQuery"],
+                exposes: [
+                    { globalName: "$" },
+                    { globalName: "jQuery" }
+                ],
             },
         }, {
             // 対象となるファイルの拡張子
             test: /\.(gif|png|jpg|svg)$/,
             // 画像をBase64として取り込む
             type: "asset/inline",
-        }, {
-            test: /\.html$/,
-            loader: "html-loader"
+            // }, {
+            //     test: /\.html$/,
+            //     loader: "html-loader"
+            // }, {
+            //     test: /\.ejs$/i,
+            //     use: [{
+            //             loader: 'html-loader',
+            //         },
+            //         {
+            //             loader: 'ejs-plain-loader'
+            //         }
+            //     ]
         }, ],
     },
     resolve: {
@@ -90,8 +102,9 @@ const config = {
             // bootstrap: "bootstrap",
         }),
         new HtmlWebpackPlugin({
-            template: "./public/index.html",
-            scriptLoading: 'defer'
+            template: "./public/index.ejs",
+            inject: false,
+            scriptLoading: "blocking",
         })
     ],
     optimization: {
