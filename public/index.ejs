@@ -10,12 +10,15 @@
 
 <body>
     <div id="viewport">
-        <div class="toast-container" id="toast-container">
-            <div class="toast d-flex align-items-center" id="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                <strong>
-            <div class="toast-body" id="toast-body"></div>
-          </strong>
-                <button type="button" class="btn-close ms-auto me-2" data-bs-dismiss="toast" aria-label="Close"></button>
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
+            <div class="toast" id="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <i class="bi-info-circle mx-1" style="color: cornflowerblue"></i>
+                    <strong class="me-auto">Information</strong>
+                    <small>AjiMarkupScript</small>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body" id="toast-body"></div>
             </div>
         </div>
 

@@ -73,18 +73,6 @@ const config = {
             test: /\.(gif|png|jpg|svg)$/,
             // 画像をBase64として取り込む
             type: "asset/inline",
-            // }, {
-            //     test: /\.html$/,
-            //     loader: "html-loader"
-            // }, {
-            //     test: /\.ejs$/i,
-            //     use: [{
-            //             loader: 'html-loader',
-            //         },
-            //         {
-            //             loader: 'ejs-plain-loader'
-            //         }
-            //     ]
         }, ],
     },
     resolve: {

@@ -1,5 +1,4 @@
 import "./lib/custom";
-import "./lib/windowlib.css";
 import * as WindowLib from "./lib/windowlib";
 import * as AMS from "./lib/ams";
 import "./index.html.css";
