@@ -104,6 +104,7 @@ const config = {
         new HtmlWebpackPlugin({
             template: "./public/index.ejs",
             inject: false,
+            scriptLoading: "blocking",
         })
     ],
     optimization: {
