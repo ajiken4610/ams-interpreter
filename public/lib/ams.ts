@@ -25,10 +25,12 @@ class StringIterator implements Iterator<string> {
   }
 }
 
-class AMSVariableMap<T> {
+export class AMSVariableMap<T> {
   private map;
-  public constructor(parent: AMSVariableMap<T>) {
+  private parent: AMSVariableMap<T> | null;
+  public constructor(parent?: AMSVariableMap<T>) {
     this.map = parent ? Object.create(parent.getMap()) : {};
+    this.parent = parent ?? null;
   }
   public has(name: string): boolean {
     return name in this.map;
@@ -39,8 +41,18 @@ class AMSVariableMap<T> {
   public set(name: string, object: T): void {
     this.map[name] = object;
   }
+  public update(name: string, object: T): void {
+    if (this.map.hasOwnProperty(name)) {
+      this.map[name] = object;
+    } else {
+      this.parent?.update(name, object);
+    }
+  }
   private getMap(): {} {
     return this.map;
+  }
+  public toString(): string {
+    return "VariableMap: " + JSON.stringify(this, null, 2);
   }
 }
 
@@ -86,15 +98,30 @@ class AMSException {
  * @class AbsAMSObject
  */
 export abstract class AbsAMSObject {
-  public constructor(args: AbsAMSObject) {}
-  public invoke(parent: AbsAMSObject): AbsAMSObject {
-    if (parent) {
-      return this.invokeWithinArguments(parent);
-    } else {
-      return this.invokeWithoutArguments();
+  public static Arguments = class {
+    private notLoad: { name: string; text: string }[];
+    private load: AbsAMSObject[];
+    private variables: AMSVariableMap<AbsAMSObject>;
+    public constructor(
+      objects: { name: string; text: string }[],
+      variables: AMSVariableMap<AbsAMSObject>
+    ) {
+      this.notLoad = objects;
+      this.load = [];
+      this.variables = variables;
     }
+  };
+  public load(iterator: StringIterator): AbsAMSObject {
+    return this;
+  }
+  protected getArgumentAt(index: number): AbsAMSObject {
+    return this;
+  }
+  protected getArgumentLength(): number {
+    return 0;
   }
 
-  protected abstract invokeWithinArguments(parent: AbsAMSObject): AbsAMSObject;
-  protected abstract invokeWithoutArguments(): AbsAMSObject;
+  protected abstract invoke(
+    argument: InstanceType<typeof AbsAMSObject.Arguments>
+  ): AbsAMSObject;
 }

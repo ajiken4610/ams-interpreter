@@ -4,6 +4,9 @@
 # build
 build/
 
+# old
+public_old/
+
 # Logs
 logs
 *.log
