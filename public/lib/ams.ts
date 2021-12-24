@@ -39,13 +39,10 @@ export class AMSVariableMap<T> {
     return this.map[name];
   }
   public set(name: string, object: T): void {
-    this.map[name] = object;
-  }
-  public update(name: string, object: T): void {
-    if (this.map.hasOwnProperty(name)) {
-      this.map[name] = object;
+    if (this.parent?.has(name)) {
+      this.parent?.set(name, object);
     } else {
-      this.parent?.update(name, object);
+      this.map[name] = object;
     }
   }
   private getMap(): {} {
@@ -124,4 +121,72 @@ export abstract class AbsAMSObject {
   protected abstract invoke(
     argument: InstanceType<typeof AbsAMSObject.Arguments>
   ): AbsAMSObject;
+
+  public abstract toHtml(): string;
+
+  public toString(): string {
+    return JSON.stringify(this, null, 2);
+  }
+}
+
+export class AMSParser {
+  private static symbols = "{};:/";
+  private static ignores = " \n";
+  private static isSymbol(char: string): boolean {
+    for (var i = 0; i < this.symbols.length; i++) {
+      if (char === this.symbols[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+  private static isIgnore(char: string): boolean {
+    for (var i = 0; i < this.ignores.length; i++) {
+      if (char === this.ignores[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+  public static parseAMS(ams: string): AbsAMSObject {
+    let iterator = new StringIterator(ams);
+    let last = " ";
+    let ignored = false;
+    let formatted = "";
+    while (iterator.hasNext()) {
+      let current = iterator.next().value;
+
+      if (!AMSParser.isIgnore(current)) {
+        // 普通の文字
+        if (ignored) {
+          // 無視している途中なら
+          ignored = false;
+          if (AMSParser.isSymbol(current) || AMSParser.isSymbol(last)) {
+            // どちらかがシンボル　＝＞　空白なし
+          } else {
+            // どちらもシンボルではない　＝＞　空白1つ
+            formatted += " ";
+          }
+        }
+        formatted += current;
+        last = current;
+      } else {
+        // 無視する文字
+        ignored = true;
+      }
+    }
+    console.log(formatted);
+    return new AMSSpan().load(new StringIterator(formatted));
+  }
+}
+
+class AMSSpan extends AbsAMSObject {
+  protected invoke(
+    argument: InstanceType<typeof AbsAMSObject.Arguments>
+  ): AbsAMSObject {
+    return this;
+  }
+  public toHtml(): string {
+    return "";
+  }
 }
