@@ -1,19 +1,33 @@
 class StringIterator implements Iterator<string> {
   private index = 0;
-  private src: string;
+  private src: number[];
+
+  public static toChars(str: string): number[] {
+    let ret = Array(str.length);
+    for (var i = 0; i < str.length; i++) {
+      ret[i] = str.codePointAt(i);
+    }
+    return ret;
+  }
+  public static fromChars(chars: number[]): string {
+    return String.fromCodePoint(...chars);
+  }
+  private charAt(index: number): string {
+    return String.fromCodePoint(this.src[index]);
+  }
   /**
    * ソースを指定してイテレータを初期化します。
    * @param {string} src
    * @memberof StringIterator
    */
   public constructor(src: string) {
-    this.src = src;
+    this.src = StringIterator.toChars(src);
   }
   public next() {
     return this.hasNext()
       ? {
           done: false,
-          value: this.src.charAt(this.index++),
+          value: this.charAt(this.index++),
         }
       : {
           done: true,
@@ -23,12 +37,20 @@ class StringIterator implements Iterator<string> {
   public hasNext() {
     return this.src.length > this.index;
   }
+  public readBefore(detect: string[]): {
+    text: string;
+    detected: string;
+  } {
+    return { text: "a", detected: "\n" };
+  }
 }
 
 export class AMSVariableMap<T> {
   private map;
+  private parent: AMSVariableMap<T> | null;
   public constructor(parent?: AMSVariableMap<T>) {
     this.map = parent ? Object.create(parent.getMap()) : {};
+    this.parent = parent ?? null;
   }
   public has(name: string): boolean {
     return name in this.map;
@@ -39,8 +61,18 @@ export class AMSVariableMap<T> {
   public set(name: string, object: T): void {
     this.map[name] = object;
   }
+  public update(name: string, object: T): void {
+    if (this.map.hasOwnProperty(name)) {
+      this.map[name] = object;
+    } else {
+      this.parent?.update(name, object);
+    }
+  }
   private getMap(): {} {
     return this.map;
+  }
+  public toString(): string {
+    return "VariableMap: " + JSON.stringify(this, null, 2);
   }
 }
 
@@ -86,19 +118,10 @@ class AMSException {
  * @class AbsAMSObject
  */
 export abstract class AbsAMSObject {
-  public constructor(args: AbsAMSObject) {}
-  public invoke(args: AbsAMSObject): AbsAMSObject {
-    if (args) {
-      return this.invokeWithinArguments(args);
-    } else {
-      return this.invokeWithoutArguments();
-    }
+  public invoke(iterator: StringIterator): AbsAMSObject {
+    return this;
   }
 
   protected abstract invokeWithinArguments(args: AbsAMSObject): AbsAMSObject;
   protected abstract invokeWithoutArguments(): AbsAMSObject;
-
-  public parseFromText(iterator: StringIterator): AbsAMSObject {
-    return this;
-  }
 }
