@@ -1,33 +1,19 @@
 class StringIterator implements Iterator<string> {
   private index = 0;
-  private src: number[];
-
-  public static toChars(str: string): number[] {
-    let ret = Array(str.length);
-    for (var i = 0; i < str.length; i++) {
-      ret[i] = str.codePointAt(i);
-    }
-    return ret;
-  }
-  public static fromChars(chars: number[]): string {
-    return String.fromCodePoint(...chars);
-  }
-  private charAt(index: number): string {
-    return String.fromCodePoint(this.src[index]);
-  }
+  private src: string;
   /**
    * ソースを指定してイテレータを初期化します。
    * @param {string} src
    * @memberof StringIterator
    */
   public constructor(src: string) {
-    this.src = StringIterator.toChars(src);
+    this.src = src;
   }
   public next() {
     return this.hasNext()
       ? {
           done: false,
-          value: this.charAt(this.index++),
+          value: this.src.charAt(this.index++),
         }
       : {
           done: true,
@@ -36,12 +22,6 @@ class StringIterator implements Iterator<string> {
   }
   public hasNext() {
     return this.src.length > this.index;
-  }
-  public readBefore(detect: string[]): {
-    text: string;
-    detected: string;
-  } {
-    return { text: "a", detected: "\n" };
   }
 }
 
@@ -118,10 +98,30 @@ class AMSException {
  * @class AbsAMSObject
  */
 export abstract class AbsAMSObject {
-  public invoke(iterator: StringIterator): AbsAMSObject {
+  public static Arguments = class {
+    private notLoad: { name: string; text: string }[];
+    private load: AbsAMSObject[];
+    private variables: AMSVariableMap<AbsAMSObject>;
+    public constructor(
+      objects: { name: string; text: string }[],
+      variables: AMSVariableMap<AbsAMSObject>
+    ) {
+      this.notLoad = objects;
+      this.load = [];
+      this.variables = variables;
+    }
+  };
+  public load(iterator: StringIterator): AbsAMSObject {
     return this;
   }
+  protected getArgumentAt(index: number): AbsAMSObject {
+    return this;
+  }
+  protected getArgumentLength(): number {
+    return 0;
+  }
 
-  protected abstract invokeWithinArguments(args: AbsAMSObject): AbsAMSObject;
-  protected abstract invokeWithoutArguments(): AbsAMSObject;
+  protected abstract invoke(
+    argument: InstanceType<typeof AbsAMSObject.Arguments>
+  ): AbsAMSObject;
 }
