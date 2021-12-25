@@ -1,3 +1,10 @@
+@import "./lib/windowlib.css";
+@import "~bootstrap/scss/bootstrap";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+:root {
+    --bs-body-bg: #242943;
+}
+
 html,
 body {
     height: 100%;
@@ -39,7 +46,7 @@ body {
 }
 
 .noto {
-    font-family: 'Noto Sans JP', sans-serif;
+    font-family: "Noto Sans JP", sans-serif;
 }
 
 .not-signined .login-warn:after {
