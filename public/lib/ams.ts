@@ -96,19 +96,66 @@ class AMSException {
  */
 export abstract class AbsAMSObject {
     public static Arguments = class {
-        private notLoad: string[];
-        private load: AbsAMSObject[];
+        private notLoad: string[] = [];
+        private load: {
+            object: AbsAMSObject;
+            argument: InstanceType<typeof AbsAMSObject.Arguments>;
+        }[];
         private variables: AMSVariableMap<AbsAMSObject>;
         public constructor(
-            objects: string[],
+            iterator: StringIterator,
             variables: AMSVariableMap<AbsAMSObject>
         ) {
-            this.notLoad = objects;
-            this.load = Array(objects.length);
+            let nestCount = 0;
+            let currentSentence = "";
+            let sentences = [];
+            while (iterator.hasNext() && nestCount >= 0) {
+                let current = iterator.next().value;
+                if (current === "{") {
+                    nestCount++;
+                }
+                if (current === "}") {
+                    nestCount--;
+                }
+                if (current === ";" && nestCount === 0) {
+                    sentences.push(currentSentence);
+                    currentSentence = "";
+                } else {
+                    currentSentence += current;
+                }
+            }
+            sentences.push(currentSentence);
+            this.notLoad = sentences;
+            this.load = Array(sentences.length);
             this.variables = variables;
         }
-        public getAt(index: number): AbsAMSObject {
-            a;
+        public invokeAt(index: number): AbsAMSObject {
+            if (!this.load[index]) {
+                // メモ化されていないとき
+                // TODO メモ化！！
+                let current = this.notLoad[index];
+
+                this.load[index] = {
+                    object: new (class extends AbsAMSObject {
+                        public toHtml() {
+                            return "";
+                        }
+                        public invoke(
+                            argument: InstanceType<
+                                typeof AbsAMSObject.Arguments
+                            >
+                        ) {
+                            return this;
+                        }
+                    })(),
+                    argument: new AbsAMSObject.Arguments(
+                        new StringIterator(""),
+                        new AMSVariableMap(this.variables)
+                    ),
+                };
+            }
+            let current = this.load[index];
+            return current.object.invoke(current.argument);
         }
         public get length(): number {
             return this.load.length;
@@ -118,27 +165,7 @@ export abstract class AbsAMSObject {
         iterator: StringIterator,
         variables: AMSVariableMap<AbsAMSObject>
     ): AbsAMSObject {
-        let nestCount = 0;
-        let currentSentence = "";
-        let sentences = [];
-        while (iterator.hasNext() && nestCount >= 0) {
-            let current = iterator.next().value;
-            if (current === "{") {
-                nestCount++;
-            }
-            if (current === "}") {
-                nestCount--;
-            }
-            if (current === ";" && nestCount === 0) {
-                sentences.push(currentSentence);
-                currentSentence = "";
-            } else {
-                currentSentence += current;
-            }
-        }
-        sentences.push(currentSentence);
-        console.log(sentences);
-        return this.invoke(new AbsAMSObject.Arguments(sentences, variables));
+        return this.invoke(new AbsAMSObject.Arguments(iterator, variables));
     }
 
     protected abstract invoke(

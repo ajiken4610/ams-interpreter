@@ -25,4 +25,5 @@ BBB;
 `
     );
     console.log(parsed1);
+    console.log(parsed1.toHtml());
 });
