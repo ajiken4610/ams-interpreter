@@ -23,6 +23,24 @@ class StringIterator implements Iterator<string> {
     public hasNext() {
         return this.src.length > this.index;
     }
+    public readBeforeChar(detect: string): {
+        detected: string;
+        value: string;
+    } {
+        let value = "";
+        while (this.hasNext()) {
+            let current = this.next().value;
+            for (var i = 0; i < detect.length; i++)
+                if (current === detect.charAt(i)) {
+                    return {
+                        detected: current,
+                        value: value,
+                    };
+                }
+            value += current;
+        }
+        return { detected: "", value: value };
+    }
 }
 
 export class AMSVariableMap<T> {
@@ -40,7 +58,7 @@ export class AMSVariableMap<T> {
     }
     public set(name: string, object: T): void {
         if (this.parent?.has(name)) {
-            this.parent?.set(name, object);
+            this.parent.set(name, object);
         } else {
             this.map[name] = object;
         }
@@ -96,8 +114,8 @@ class AMSException {
  */
 export abstract class AbsAMSObject {
     public static Arguments = class {
-        private notLoad: string[] = [];
-        private load: {
+        private notLoaded: string[] = [];
+        private loaded: {
             object: AbsAMSObject;
             argument: InstanceType<typeof AbsAMSObject.Arguments>;
         }[];
@@ -125,17 +143,23 @@ export abstract class AbsAMSObject {
                 }
             }
             sentences.push(currentSentence);
-            this.notLoad = sentences;
-            this.load = Array(sentences.length);
+            this.notLoaded = sentences;
+            this.loaded = Array(sentences.length);
             this.variables = variables;
         }
         public invokeAt(index: number): AbsAMSObject {
-            if (!this.load[index]) {
+            if (!this.loaded[index]) {
                 // メモ化されていないとき
                 // TODO メモ化！！
-                let current = this.notLoad[index];
-
-                this.load[index] = {
+                let toLoad = this.notLoaded[index];
+                let iterator = new StringIterator(toLoad);
+                if (toLoad.charAt(0) === "/") {
+                    // この文が変数で始まる文だったら
+                    let variableName = iterator.readBeforeChar("{:");
+                    if (this.variables.has(variableName.value)) {
+                    }
+                }
+                this.loaded[index] = {
                     object: new (class extends AbsAMSObject {
                         public toHtml() {
                             return "";
@@ -154,11 +178,11 @@ export abstract class AbsAMSObject {
                     ),
                 };
             }
-            let current = this.load[index];
+            let current = this.loaded[index];
             return current.object.invoke(current.argument);
         }
         public get length(): number {
-            return this.load.length;
+            return this.loaded.length;
         }
     };
     public load(
