@@ -1,4 +1,4 @@
-class StringIterator implements Iterator<string> {
+export class StringIterator implements Iterator<string> {
     private index = 0;
     private src: string;
     /**
@@ -45,7 +45,31 @@ class StringIterator implements Iterator<string> {
         detect: string,
         nest: string
     ): { detected: string; value: string } {
-        return { detected: "", value: "" };
+        let symboles = detect + nest;
+        let nestStart = nest.charAt(0);
+        let nestEnd = nest.charAt(1);
+        let nestCount = 0;
+        let ret = "";
+
+        while (this.hasNext() && nestCount >= 0) {
+            let current = this.readBeforeChar(
+                nestCount === 0 ? symboles : nest
+            );
+            ret += current.value;
+            if (current.detected === nestStart) {
+                // ネストの始まりなら
+                ret += nestStart;
+                nestCount++;
+            } else if (current.detected === nestEnd) {
+                // ネストの終わりなら
+                ret += nestEnd;
+                nestCount--;
+            } else if (nestCount === 0) {
+                // 文の切れ目なら => RETURN
+                return { detected: current.detected, value: ret };
+            }
+        }
+        return { detected: "", value: ret };
     }
 }
 
@@ -125,7 +149,25 @@ export abstract class AbsAMSObject {
     public static Sentence = class {
         public static Invokable = class {
             public constructor(iterator: StringIterator) {
+                // これは抽象クラスなので、コンストラクタは各自実装！！！！
+                // この下に書いてある内容は後で消してくれ！！！！
+                // TODO 削除！！！！
+
                 // AAとか/AAとか:とか{...}とかがiteratorに流れてくる
+                // AA => 文字列
+                // /AA => 変数
+                // : => 引数なし呼び出し
+                // {...} => Argumentsを引数として呼び出し
+                let first = iterator.next().value;
+                if (first === "/") {
+                    // 変数
+                } else if (first === ":") {
+                    // 呼び出し(引数なし)
+                } else if (first === "{") {
+                    // 呼び出し(引数あり)
+                } else {
+                    // 文字列、文字列呼び出し
+                }
             }
             public invoke(
                 last: AbsAMSObject,
@@ -139,6 +181,9 @@ export abstract class AbsAMSObject {
         >[] = [];
         public constructor(iterator: StringIterator) {
             // AA:BB とか AA{...Arguments...}BBとかがiteratorに流れてくる
+            while (iterator.hasNext()) {
+                console.log(iterator.readBeforeChar(":{"));
+            }
         }
         public invoke(variables: AMSVariableMap<AbsAMSObject>): AbsAMSObject {
             // TODO 実装
@@ -159,26 +204,13 @@ export abstract class AbsAMSObject {
         private notLoaded: (string | null)[] = [];
         private loaded: InstanceType<typeof AbsAMSObject.Sentence>[];
         public constructor(iterator: StringIterator) {
-            // {AA;BB;CC}とかがiteratorに流れてくる
-            let nestCount = 0;
-            let currentSentence = "";
+            // AA;BB;CCとかがiteratorに流れてくる
             let sentences = [];
-            while (iterator.hasNext() && nestCount >= 0) {
-                let current = iterator.next().value;
-                if (current === "{") {
-                    nestCount++;
-                }
-                if (current === "}") {
-                    nestCount--;
-                }
-                if (current === ";" && nestCount === 0) {
-                    sentences.push(currentSentence);
-                    currentSentence = "";
-                } else {
-                    currentSentence += current;
-                }
+            while (iterator.hasNext()) {
+                sentences.push(
+                    iterator.readBeforeCharWithNest(";", "{}").value
+                );
             }
-            sentences.push(currentSentence);
             this.notLoaded = sentences;
             this.loaded = Array(sentences.length);
         }
