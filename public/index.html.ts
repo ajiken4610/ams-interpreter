@@ -22,12 +22,20 @@ $(() => {
     //     console.log(iterator.readBeforeChar(",!"));
     // }
 
+    // console.log("====readbeforecharwithnest====");
+    // let iterator = new AMS.StringIterator(
+    //     `AAA;BBB;CCC{XXX{PPP};YYY};/DDD{10};/DDD`
+    // );
+    // while (iterator.hasNext()) {
+    //     console.log(iterator.readBeforeCharWithNest(";", "{}"));
+    // }
+
     console.log("====absamsobject====");
     let parsed1 = AMS.AMSParser.parseAMS(
         `
-    AAA;
+    AAA:
     BBB;
-    /DDD{10};
+    /DDD{XXX{PPP}};
     /DDD
     `
     );
