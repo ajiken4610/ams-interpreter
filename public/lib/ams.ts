@@ -1,4 +1,4 @@
-class StringIterator implements Iterator<string> {
+export class StringIterator implements Iterator<string> {
     private index = 0;
     private src: string;
     /**
@@ -41,6 +41,36 @@ class StringIterator implements Iterator<string> {
         }
         return { detected: "", value: value };
     }
+    public readBeforeCharWithNest(
+        detect: string,
+        nest: string
+    ): { detected: string; value: string } {
+        let symboles = detect + nest;
+        let nestStart = nest.charAt(0);
+        let nestEnd = nest.charAt(1);
+        let nestCount = 0;
+        let ret = "";
+
+        while (this.hasNext() && nestCount >= 0) {
+            let current = this.readBeforeChar(
+                nestCount === 0 ? symboles : nest
+            );
+            ret += current.value;
+            if (current.detected === nestStart) {
+                // ネストの始まりなら
+                ret += nestStart;
+                nestCount++;
+            } else if (current.detected === nestEnd) {
+                // ネストの終わりなら
+                ret += nestEnd;
+                nestCount--;
+            } else if (nestCount === 0) {
+                // 文の切れ目なら => RETURN
+                return { detected: current.detected, value: ret };
+            }
+        }
+        return { detected: "", value: ret };
+    }
 }
 
 export class AMSVariableMap<T> {
@@ -62,6 +92,9 @@ export class AMSVariableMap<T> {
         } else {
             this.map[name] = object;
         }
+    }
+    public setAsOwn(name: string, object: T): void {
+        this.map[name] = object;
     }
     private getMap(): {} {
         return this.map;
@@ -113,73 +146,88 @@ class AMSException {
  * @class AbsAMSObject
  */
 export abstract class AbsAMSObject {
-    public static Arguments = class {
-        private notLoaded: string[] = [];
-        private loaded: {
-            object: AbsAMSObject;
-            argument: InstanceType<typeof AbsAMSObject.Arguments>;
-        }[];
-        private variables: AMSVariableMap<AbsAMSObject>;
-        public constructor(
-            iterator: StringIterator,
-            variables: AMSVariableMap<AbsAMSObject>
-        ) {
-            let nestCount = 0;
-            let currentSentence = "";
-            let sentences = [];
-            while (iterator.hasNext() && nestCount >= 0) {
-                let current = iterator.next().value;
-                if (current === "{") {
-                    nestCount++;
-                }
-                if (current === "}") {
-                    nestCount--;
-                }
-                if (current === ";" && nestCount === 0) {
-                    sentences.push(currentSentence);
-                    currentSentence = "";
+    public static Sentence = class {
+        public static Invokable = class {
+            public constructor(iterator: StringIterator) {
+                // これは抽象クラスなので、コンストラクタは各自実装！！！！
+                // この下に書いてある内容は後で消してくれ！！！！
+                // TODO 削除！！！！
+
+                // AAとか/AAとか:とか{...}とかがiteratorに流れてくる
+                // AA => 文字列
+                // /AA => 変数
+                // : => 引数なし呼び出し
+                // {...} => Argumentsを引数として呼び出し
+                let first = iterator.next().value;
+                if (first === "/") {
+                    // 変数
+                } else if (first === ":") {
+                    // 呼び出し(引数なし)
+                } else if (first === "{") {
+                    // 呼び出し(引数あり)
                 } else {
-                    currentSentence += current;
+                    // 文字列、文字列呼び出し
                 }
             }
-            sentences.push(currentSentence);
+            public invoke(
+                last: AbsAMSObject,
+                variables: AMSVariableMap<AbsAMSObject>
+            ): AbsAMSObject {
+                throw "This method must be implemented.";
+            }
+        };
+        private invokables: InstanceType<
+            typeof AbsAMSObject.Sentence.Invokable
+        >[] = [];
+        public constructor(iterator: StringIterator) {
+            // AA:BB とか AA{...Arguments...}BBとかがiteratorに流れてくる
+            while (iterator.hasNext()) {
+                console.log(iterator.readBeforeChar(":{"));
+            }
+        }
+        public invoke(variables: AMSVariableMap<AbsAMSObject>): AbsAMSObject {
+            // TODO 実装
+            return new (class extends AbsAMSObject {
+                public invoke(
+                    argument: InstanceType<typeof AbsAMSObject.Arguments>,
+                    variables: AMSVariableMap<AbsAMSObject>
+                ) {
+                    return this;
+                }
+                public toHtml(): string {
+                    return "";
+                }
+            })();
+        }
+    };
+    public static Arguments = class {
+        private notLoaded: (string | null)[] = [];
+        private loaded: InstanceType<typeof AbsAMSObject.Sentence>[];
+        public constructor(iterator: StringIterator) {
+            // AA;BB;CCとかがiteratorに流れてくる
+            let sentences = [];
+            while (iterator.hasNext()) {
+                sentences.push(
+                    iterator.readBeforeCharWithNest(";", "{}").value
+                );
+            }
             this.notLoaded = sentences;
             this.loaded = Array(sentences.length);
-            this.variables = variables;
         }
-        public invokeAt(index: number): AbsAMSObject {
-            if (!this.loaded[index]) {
+        public invokeAt(
+            index: number,
+            variables: AMSVariableMap<AbsAMSObject>
+        ): AbsAMSObject {
+            let toLoad;
+            if (!this.loaded[index] && (toLoad = this.notLoaded[index])) {
                 // メモ化されていないとき
-                // TODO メモ化！！
-                let toLoad = this.notLoaded[index];
-                let iterator = new StringIterator(toLoad);
-                if (toLoad.charAt(0) === "/") {
-                    // この文が変数で始まる文だったら
-                    let variableName = iterator.readBeforeChar("{:");
-                    if (this.variables.has(variableName.value)) {
-                    }
-                }
-                this.loaded[index] = {
-                    object: new (class extends AbsAMSObject {
-                        public toHtml() {
-                            return "";
-                        }
-                        public invoke(
-                            argument: InstanceType<
-                                typeof AbsAMSObject.Arguments
-                            >
-                        ) {
-                            return this;
-                        }
-                    })(),
-                    argument: new AbsAMSObject.Arguments(
-                        new StringIterator(""),
-                        new AMSVariableMap(this.variables)
-                    ),
-                };
+                // let toLoad = this.notLoaded[index];
+                this.loaded[index] = new AbsAMSObject.Sentence(
+                    new StringIterator(toLoad)
+                );
+                this.notLoaded[index] = null;
             }
-            let current = this.loaded[index];
-            return current.object.invoke(current.argument);
+            return this.loaded[index].invoke(variables);
         }
         public get length(): number {
             return this.loaded.length;
@@ -189,11 +237,14 @@ export abstract class AbsAMSObject {
         iterator: StringIterator,
         variables: AMSVariableMap<AbsAMSObject>
     ): AbsAMSObject {
-        return this.invoke(new AbsAMSObject.Arguments(iterator, variables));
+        let argument = new AbsAMSObject.Arguments(iterator);
+        let childVariables = new AMSVariableMap<AbsAMSObject>(variables);
+        return this.invoke(argument, childVariables);
     }
 
     protected abstract invoke(
-        argument: InstanceType<typeof AbsAMSObject.Arguments>
+        argument: InstanceType<typeof AbsAMSObject.Arguments>,
+        variables: AMSVariableMap<AbsAMSObject>
     ): AbsAMSObject;
 
     public abstract toHtml(): string;
@@ -230,7 +281,10 @@ export class AMSParser {
         while (iterator.hasNext()) {
             let current = iterator.next().value;
 
-            if (!AMSParser.isIgnore(current)) {
+            if (AMSParser.isIgnore(current)) {
+                // 無視する文字
+                ignored = true;
+            } else {
                 // 普通の文字
                 if (ignored) {
                     // 無視している途中なら
@@ -245,9 +299,6 @@ export class AMSParser {
                 }
                 formatted += current;
                 last = current;
-            } else {
-                // 無視する文字
-                ignored = true;
             }
         }
         return new AMSSpan().load(
@@ -258,12 +309,23 @@ export class AMSParser {
 }
 
 class AMSSpan extends AbsAMSObject {
+    private result: AbsAMSObject[] = [];
     protected invoke(
-        argument: InstanceType<typeof AbsAMSObject.Arguments>
+        argument: InstanceType<typeof AbsAMSObject.Arguments>,
+        variables: AMSVariableMap<AbsAMSObject>
     ): AbsAMSObject {
+        let parentVariables = new AMSVariableMap(variables);
+        this.result = Array(argument.length);
+        for (var i = 0; i < argument.length; i++) {
+            this.result[i] = argument.invokeAt(i, parentVariables);
+        }
         return this;
     }
     public toHtml(): string {
-        return "";
+        let ret = "";
+        for (var i = 0; i < this.result.length; i++) {
+            ret += this.result[i].toHtml();
+        }
+        return ret;
     }
 }
