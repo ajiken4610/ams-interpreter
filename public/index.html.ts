@@ -30,11 +30,18 @@ $(() => {
     //     console.log(iterator.readBeforeCharWithNest(";", "{}"));
     // }
 
+    // console.log("====readbeforecharwithnest2");
+    // let iterator = new AMS.StringIterator("aa{ab}aa{ff");
+    // while (iterator.hasNext()) {
+    //     console.log(iterator.readBeforeCharWithNest("{", "{}"));
+    // }
+
     console.log("====absamsobject====");
     let parsed1 = AMS.AMSParser.parseAMS(
         `
     AAA:
     BBB;
+    CCC{};
     /DDD{XXX{PPP}};
     /DDD
     `
