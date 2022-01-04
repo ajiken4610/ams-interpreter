@@ -44,22 +44,31 @@ export class StringIterator implements Iterator<string> {
     public readBeforeCharWithNest(
         detect: string,
         nest: string,
-        detectContainNest?: false | true
+        detectContainNest?: false | true,
+        inNest?: false | true
     ): { detected: string; value: string } {
         let symboles = detect + nest;
         let nestStart = nest.charAt(0);
         let nestEnd = nest.charAt(1);
-        let nestCount = 0;
+        let nestCount = inNest ? 1 : 0;
         let ret = "";
 
         while (this.hasNext()) {
             if (nestCount > 0) {
                 let current = this.readBeforeChar(nest);
                 if (current.detected === nestStart) nestCount++;
-                if (current.detected === nestEnd) nestCount--;
+                if (current.detected === nestEnd) {
+                    if (--nestCount === 0 && inNest) {
+                        return {
+                            detected: current.detected,
+                            value: ret + current.value,
+                        };
+                    }
+                }
                 ret += current.value + current.detected;
             } else {
                 let current = this.readBeforeChar(symboles);
+                // console.log(`detected: "${current.detected}"`);
                 if (current.detected === nestStart) {
                     if (detectContainNest) {
                         return {
@@ -69,13 +78,14 @@ export class StringIterator implements Iterator<string> {
                     } else {
                         nestCount++;
                     }
-                } else if (current.detected === nestEnd)
+                } else if (current.detected === nestEnd) {
                     return { detected: nestEnd, value: ret + current.value };
-                else
+                } else {
                     return {
                         detected: current.detected,
                         value: ret + current.value,
                     };
+                }
                 ret += current.value + current.detected;
             }
         }
@@ -202,17 +212,16 @@ export abstract class AbsAMSObject {
             // : => 引数なし呼び出し
             // {...} => Argumentsを引数として呼び出し
             let last = "";
-            let nesting = false;
-            console.log("\t=\t=\t=");
+            console.log("=\t=\t=\t=");
             while (iterator.hasNext() || last !== "") {
                 let current = iterator.readBeforeCharWithNest(
-                    "/:{",
+                    "/:",
                     "{}",
-                    true
+                    true,
+                    last === "{"
                 );
-                console.log(current);
-                nesting = false;
-                //console.log(current);
+                // console.log(current);
+                if (last === "}") last = "";
                 let value = current.value;
                 if (last === "/") {
                     // 変数
@@ -222,7 +231,6 @@ export abstract class AbsAMSObject {
                     console.log("省略呼び出し\t" + last + value);
                 } else if (last === "{") {
                     // 呼び出し(引数あり)
-                    nesting = true;
                     console.log("通常呼び出し\t" + last + value);
                 } else if (value.length > 0) {
                     // 文字列、文字列呼び出し
