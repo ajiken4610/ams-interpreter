@@ -42,15 +42,38 @@ $(() => {
     //     console.log(iterator.readBeforeCharWithNest("", "{}", true, true));
     // }
 
-    console.log("====absamsobject====");
+    // console.log("====absamsobject====");
+    // let parsed1 = AMS.AMSParser.parseAMS(
+    //     `
+    // AAA:BBB;
+    // CCC{};
+    // /DDD{XXX{PPP}}aa;
+    // /DDD:EEE{
+    //     AAA:BBB{
+    //         XXX{
+    //             YYY:ZZZ
+    //         };PPP
+    //     }
+    // }{
+    //     AAA
+    // }EEE{
+    //     WWW
+    // }:{
+    //     AAA
+    // }/FFF:AAA
+    // `
+    // );
+    // console.log(parsed1);
+    // console.log(parsed1.toHtml());
+
+    console.log("====absamsobject2====");
     let parsed1 = AMS.AMSParser.parseAMS(
         `
-    AAA:BBB;
-    CCC{};
-    /DDD{XXX{PPP}}aa;
-    /DDD:EEE{AAA:BBB}EEE
-    `
+00:01:02;
+00{01}{02};
+00{01}02;
+00{01}:02;
+00{01}:{02}
+`
     );
-    console.log(parsed1);
-    console.log(parsed1.toHtml());
 });

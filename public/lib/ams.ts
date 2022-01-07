@@ -188,12 +188,6 @@ class AMSException {
 export abstract class AbsAMSObject {
     public static Sentence = class {
         public static Invokable = class {
-            public constructor(iterator: StringIterator) {
-                // これは抽象クラスなので、コンストラクタは各自実装！！！！
-                // この下に書いてある内容は後で消してくれ！！！！
-                // TODO 削除！！！！
-                // AAとか/AAとか:とか{...}とかがiteratorに流れてくる
-            }
             public invoke(
                 last: AbsAMSObject,
                 variables: AMSVariableMap<AbsAMSObject>
@@ -213,7 +207,7 @@ export abstract class AbsAMSObject {
             // {...} => Argumentsを引数として呼び出し
             let last = "";
             console.log("=\t=\t=\t=");
-            while (iterator.hasNext() || last !== "") {
+            while (iterator.hasNext()) {
                 let current = iterator.readBeforeCharWithNest(
                     "/:",
                     "{}",
@@ -225,13 +219,65 @@ export abstract class AbsAMSObject {
                 let value = current.value;
                 if (last === "/") {
                     // 変数
+                    this.invokables.push(
+                        new (class extends AbsAMSObject.Sentence.Invokable {
+                            public invoke(
+                                last: AbsAMSObject,
+                                variables: AMSVariableMap<AbsAMSObject>
+                            ): AbsAMSObject {
+                                return new (class extends AbsAMSObject {
+                                    public invoke(
+                                        argument: InstanceType<
+                                            typeof AbsAMSObject.Arguments
+                                        >,
+                                        variables: AMSVariableMap<AbsAMSObject>
+                                    ): AbsAMSObject {
+                                        if (argument.length === 0) {
+                                            // 取得only
+                                            if (variables.has(value)) {
+                                                return variables.get(value);
+                                            } else {
+                                                let nullValue =
+                                                    AbsAMSObject.NULL;
+                                                variables.set(value, nullValue);
+                                                return nullValue;
+                                            }
+                                        } else {
+                                            // 代入
+                                            let invoked = argument.invokeAt(
+                                                0,
+                                                variables
+                                            );
+                                            variables.set(value, invoked);
+                                            return invoked;
+                                        }
+                                    }
+                                    public finalInvoke(
+                                        variables: AMSVariableMap<AbsAMSObject>
+                                    ) {
+                                        return this.invoke(
+                                            new AbsAMSObject.Arguments(
+                                                new StringIterator("")
+                                            ),
+                                            variables
+                                        );
+                                    }
+                                    public toHtml(): string {
+                                        return "";
+                                    }
+                                })();
+                            }
+                        })()
+                    );
                     console.log("変数\t\t\t" + last + value);
                 } else if (last === ":") {
                     // 呼び出し(引数なし)
                     console.log("省略呼び出し\t" + last + value);
                 } else if (last === "{") {
                     // 呼び出し(引数あり)
-                    console.log("通常呼び出し\t" + last + value);
+                    console.log(
+                        "通常呼び出し\t" + last + value + current.detected
+                    );
                 } else if (value.length > 0) {
                     // 文字列、文字列呼び出し
                     console.log("文字列\t\t\t" + last + value);
@@ -241,11 +287,14 @@ export abstract class AbsAMSObject {
         }
         public invoke(variables: AMSVariableMap<AbsAMSObject>): AbsAMSObject {
             // TODO 実装
+            console.log("=========================invoked");
+            console.log(this.invokables);
             return new (class extends AbsAMSObject {
                 public invoke(
                     argument: InstanceType<typeof AbsAMSObject.Arguments>,
                     variables: AMSVariableMap<AbsAMSObject>
                 ) {
+                    // 前から順番に呼び出していく
                     return this;
                 }
                 public toHtml(): string {
@@ -287,6 +336,19 @@ export abstract class AbsAMSObject {
             return this.loaded.length;
         }
     };
+
+    public static NULL: AbsAMSObject = new (class extends AbsAMSObject {
+        public invoke(
+            argument: InstanceType<typeof AbsAMSObject.Arguments>,
+            variables: AMSVariableMap<AbsAMSObject>
+        ): AbsAMSObject {
+            return this;
+        }
+        public toHtml(): string {
+            return "NULL";
+        }
+    })();
+
     public load(
         iterator: StringIterator,
         variables: AMSVariableMap<AbsAMSObject>
@@ -301,7 +363,9 @@ export abstract class AbsAMSObject {
         variables: AMSVariableMap<AbsAMSObject>
     ): AbsAMSObject;
 
-    protected finalInvoke(variables: AMSVariableMap<AbsAMSObject>) {
+    protected finalInvoke(
+        variables: AMSVariableMap<AbsAMSObject>
+    ): AbsAMSObject {
         return this;
     }
 
