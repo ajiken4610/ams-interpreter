@@ -58,6 +58,7 @@ World
 
 -   AMS では、以下の 5 つの記号が予約されています。  
     `;`,`:`,`{`,`}`,`/`
+<del>
 -   AMS の 1 つのブロックは「Arguments」という名前で定義されます。
 -   Arguments は 0 つ以上の「Sentence」の集合として定義されます。  
     Arguments 内で区切り文字「`;`」を使用して Sentence を分離します。
@@ -94,3 +95,4 @@ PPP{QQQ:RRR;SSS};WWW{XXX{YYY:ZZZ}}
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                 A
 ```
+</del>
