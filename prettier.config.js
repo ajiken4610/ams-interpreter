@@ -1,1 +1,1 @@
-module.exports = { tabWidth: 4 }
+module.exports = { tabWidth: 4, /*printWidth: 64,*/ }
