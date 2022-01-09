@@ -1,3 +1,4 @@
+# AjiMarkupScriptについて
 ## 動機
 
 昔、文字の装飾をする規格として、`AjiML`というものを設計したのですが、自分的にいまいちだったので、新しい規格を作るべく、`AjiMarkupScript`、略して`AMS`を設計しました。  
@@ -57,18 +58,50 @@ World
 
 -   AMS では、以下の 5 つの記号が予約されています。  
     `;`,`:`,`{`,`}`,`/`
--   AMS の 1 つのブロックは「Arguments」という名前で定義されます。
+-   AMSでは，`:`,`{}`による呼び出し文と、`/`による変数文のみがサポートされます。  
+-   AMSの1つのブロックはParagraphという名前で定義されます。
+-   Paragraphは0つ以上のSentenceの集合として定義されます。
+-   Sentenceは0つ以上のWordのチェーンとして定義されます。  Sentenceが0つのWordのチェーンの場合は、Sentenceはnull Sentenceと定義されます。
+-   Wordは長さが0以上のテキスト、もしくは1つのParagraphを保持します。
+
+AMS の階層構造を図に示すと以下のようになります。  
+(`P:Paragraph,S:Sentence,W:Word`)  
+
+```:AMSの階層構造
+PPP{QQQ:RRR;SSS};WWW{XXX{YYY:ZZZ}}
+^^^ ^^^ ^^^ ^^^  ^^^ ^^^ ^^^ ^^^
+ W   W   W   W    W   W   W   W
+    ^^^^^^^ ^^^          ^^^^^^^
+       S     S              S
+    ^^^^^^^^^^^          ^^^^^^^
+         P                  P
+   ^^^^^^^^^^^^^        ^^^^^^^^^
+         W                  W
+^^^^^^^^^^^^^^^^     ^^^^^^^^^^^^
+       S                   S
+                     ^^^^^^^^^^^^
+                           P
+                    ^^^^^^^^^^^^^^
+                           W
+                 ^^^^^^^^^^^^^^^^^
+                         S
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                P
+```
+
+<del>
+-   AMS の 1 つのブロックは「Arguments」という名前で定義されます。  
 -   Arguments は 0 つ以上の「Sentence」の集合として定義されます。  
-    Arguments 内で区切り文字「`;`」を使用して Sentence を分離します。
+    Arguments 内で区切り文字「`;`」を使用して Sentence を分離します。  
 -   Sentence は 0 つ以上の「Invokable」の集合として定義されます。  
      Sentence 内で区切り文字「`:`」または、「`{...}`」を用いて分離します。  
     なお、以下の記述はすべて同じ動作をします。  
     `AA:BB;AA{BB};{AA}{BB};{AA}BB`  
-    この場合では、シンプルな「`:`」を使用すると良いでしょう。
--   Invokable は最大で 1 つの Arguments を保持します。
+    この場合では、シンプルな「`:`」を使用すると良いでしょう。  
+-   Invokable は最大で 1 つの Arguments を保持します。  
 
-AMS の階層構造を図に示すと以下のようになります。
-(`A:Arguments,S:Sentence,I:Invokable`)
+AMS の階層構造を図に示すと以下のようになります。  
+(`A:Arguments,S:Sentence,I:Invokable`)  
 
 ```:AMSの階層構造
 PPP{QQQ:RRR;SSS};WWW{XXX{YYY:ZZZ}}
@@ -91,3 +124,4 @@ PPP{QQQ:RRR;SSS};WWW{XXX{YYY:ZZZ}}
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                 A
 ```
+</del>
