@@ -44,26 +44,32 @@ $(() => {
 
     console.log("====absamsobject====");
     let parsed1 = AMS.AMSParser.parseAMS(
-        `
-    AAA:BBB;
-    CCC{};
-    /DDD{XXX{PPP}}aa;
-    /DDD:EEE{
-        AAA:BBB{
-            XXX{
-                YYY:ZZZ
-            };PPP
-        }
-    }{
-        AAA
-    }EEE{
-        WWW
-    }:{
-        AAA
-    }/FFF:AAA
-    `
+        // `
+        // AAA:BBB;
+        // CCC{};
+        // /DDD:{XXX{PPP}}aa;
+        // /DDD:EEE{
+        //     AAA:BBB{
+        //         XXX{
+        //             YYY:ZZZ
+        //         };PPP
+        //     }
+        // }{
+        //     AAA
+        // }EEE{
+        //     WWW
+        // }:{
+        //     AAA
+        // }/FFF:AAA
+        // `
+        // `/AA/BB:CC`
+        `/abc{hello};/abc{}`
     );
+    // for (let invokable of parsed1.iterator()) {
+    //     console.log(invokable.toString());
+    // }
     console.log(parsed1);
+    console.log(parsed1.getStructureString());
     // console.log(parsed1.toHtml());
     // $("#fragment-container").html(parsed1.toHtml());
 
