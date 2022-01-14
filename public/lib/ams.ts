@@ -23,6 +23,12 @@ export class StringIterator implements Iterator<string> {
     public hasNext() {
         return this.src.length > this.index;
     }
+
+    public readAll(): string {
+        let index = this.index;
+        this.index = this.src.length;
+        return this.src.substring(index, this.src.length);
+    }
     public readBeforeChar(detect: string): {
         detected: string;
         value: string;
@@ -116,12 +122,41 @@ export class StringIterator implements Iterator<string> {
     }
 }
 
+class StringUtils {
+    public static repeat(str: string, count: number): string {
+        let ret = "";
+        for (var i = 0; i < count; i++) {
+            ret += str;
+        }
+        return ret;
+    }
+}
+export class ImportedNamespace {
+    private imported: string[];
+    public constructor(parent?: ImportedNamespace) {
+        this.imported = parent ? parent.get().slice() : [];
+    }
+    public add(prefix: string): void {
+        this.imported.push(prefix);
+    }
+    public get(): string[] {
+        return this.imported;
+    }
+}
 export class AMSVariableMap<T> {
     private map;
     private parent: AMSVariableMap<T> | null;
-    public constructor(parent?: AMSVariableMap<T>) {
+    private imported: ImportedNamespace;
+    public constructor(
+        parent?: AMSVariableMap<T>,
+        imported?: ImportedNamespace
+    ) {
         this.map = parent ? Object.create(parent.getMap()) : {};
         this.parent = parent ?? null;
+        this.imported = imported ?? new ImportedNamespace();
+    }
+    public newScope() {
+        return new AMSVariableMap<T>(this, this.imported);
     }
     public has(name: string): boolean {
         return name in this.map;
@@ -142,179 +177,348 @@ export class AMSVariableMap<T> {
     private getMap(): {} {
         return this.map;
     }
-    public toString(): string {
+    public getStructureString(): string {
         return "VariableMap: " + JSON.stringify(this, null, 2);
     }
 }
+export class ReservedWord {
+    static NEST = "{}";
+    static NEST_START = this.NEST.charAt(0);
+    static NEST_END = this.NEST.charAt(1);
+    static VARIABLE = "/";
+    static INVOKE = ":";
+    static SEPARATOR = ";";
+}
 
-// class Invokable {
-//     public invoke(
-//         argument: Arguments,
-//         variables: AMSVariableMap<Sentence>
-//     ): Invokable {
-//         return this;
-//     }
-//     public finalInvoke(variables: AMSVariableMap<Sentence>): Invokable {
-//         return this;
-//     }
-//     public toArguments(): Arguments {
-//         let invokable = this;
-//         return new (class extends Arguments {
-//             public constructor() {
-//                 super();
-//                 this.notLoaded[0] = new (class extends Sentence {
-//                     public invoke(
-//                         variables: AMSVariableMap<Sentence>
-//                     ): Invokable {
-//                         return invokable;
-//                     }
-//                 })();
-//             }
-//         })();
-//     }
-// }
+export abstract class Invokable {
+    public static NULL = new (class extends Invokable {
+        public invoke(
+            argument: Invokable,
+            variables: AMSVariableMap<Invokable>
+        ): Invokable {
+            return this;
+        }
+        public getStructureString(indentOffset: string = ""): string {
+            return indentOffset + "null\n";
+        }
+        private TAG = "NULL";
+    })();
+    private childs: Invokable[] = [];
+    protected indenter = "|   ";
 
-// class VariableInvokable extends Invokable {
-//     public value: string;
-//     public constructor(value: string) {
-//         super();
-//         this.value = value;
-//     }
-//     public invoke(
-//         argument: Arguments,
-//         variables: AMSVariableMap<Sentence>
-//     ): Invokable {
-//         let value = this.value;
-//         return new (class extends Invokable {
-//             public invoke(
-//                 argument: Arguments,
-//                 variables: AMSVariableMap<Sentence>
-//             ): Invokable {
-//                 if (argument.length === 0) {
-//                     // 取得only
-//                     if (variables.has(value)) {
-//                         return variables.get(value);
-//                     } else {
-//                         let nullValue = Sentence.NULL;
-//                         variables.set(value, nullValue);
-//                         return nullValue;
-//                     }
-//                 } else {
-//                     // 代入
-//                     let invoked = argument.invokeAt(0, variables);
-//                     variables.set(value, invoked);
-//                     return invoked;
-//                 }
-//             }
-//             public finalInvoke(variables: AMSVariableMap<Sentence>): Invokable {
-//                 return this.invoke(new Arguments(), variables);
-//             }
-//         })();
-//     }
-// }
+    public iterator() {
+        let outerThis = this;
+        let childs = this.childs;
+        return new (class implements IterableIterator<Invokable> {
+            private index = -1;
+            public next(): IteratorResult<Invokable> {
+                let current;
+                let hasNext =
+                    (current = outerThis.getAt(++this.index)) !== undefined;
+                return {
+                    done: !hasNext,
+                    value: hasNext
+                        ? outerThis.getAt(this.index)
+                        : Invokable.NULL,
+                };
+            }
+            [Symbol.iterator](): IterableIterator<Invokable> {
+                return this;
+            }
+        })();
+    }
+    /**
+     * 次の要素を引数として呼び出されます。
+     *
+     * @abstract
+     * @param {Invokable} argument 引数となる次の要素
+     * @param {AMSVariableMap<Invokable>} variables 実行時に存在する変数
+     * @return {Invokable} 呼び出した結果
+     * @memberof Invokable
+     */
+    public abstract invoke(
+        argument: Invokable,
+        variables: AMSVariableMap<Invokable>
+    ): Invokable;
+    /**
+     * 次の要素なしで呼び出されます。
+     *
+     * @param {AMSVariableMap<Invokable>} variables 実行時に存在する変数
+     * @return {Invokable} 呼び出した結果
+     * @memberof Invokable
+     */
+    public invokeFinal(variables: AMSVariableMap<Invokable>): Invokable {
+        return this;
+    }
+    public getAt(index: number): Invokable {
+        return this.childs[index];
+    }
+    public set(childs: Invokable[]): void {
+        this.childs = childs;
+    }
+    public setAt(index: number, child: Invokable): void {
+        this.childs[index] = child;
+    }
+    public append(child: Invokable): void {
+        this.childs.push(child);
+    }
+    public abstract getStructureString(indentOffset?: string): string;
+}
 
-// class Sentence {
-//     public static NULL = new (class extends Sentence {
-//         public invoke(variables: AMSVariableMap<Sentence>): Sentence {
-//             return this;
-//         }
-//     })();
-//     private invokables: Invokable[] = [];
-//     public constructor(iterator?: StringIterator) {
-//         // AA:BB とか AA{...Arguments...}BBとかがiteratorに流れてくる
-//         if (iterator) {
-//             // AA => 文字列
-//             // /AA => 変数
-//             // : => 引数なし呼び出し
-//             // {...} => Argumentsを引数として呼び出し
-//             let last = "";
-//             console.log("=\t=\t=\t=");
-//             while (iterator.hasNext()) {
-//                 let current = iterator.readBeforeCharWithNest(
-//                     "/:",
-//                     "{}",
-//                     true,
-//                     last === "{"
-//                 );
-//                 // console.log(current);
-//                 if (last === "}") last = "";
-//                 let value = current.value;
-//                 if (last === "/") {
-//                     // 変数
-//                     this.invokables.push(new VariableInvokable(value));
-//                     console.log("変数\t\t\t" + last + value);
-//                 } else if (last === ":") {
-//                     // 呼び出し(引数なし)
-//                     console.log("省略呼び出し\t" + last + value);
-//                 } else if (last === "{") {
-//                     // 呼び出し(引数あり)
-//                     console.log(
-//                         "通常呼び出し\t" + last + value + current.detected
-//                     );
-//                 } else if (value.length > 0) {
-//                     // 文字列、文字列呼び出し
-//                     console.log("文字列\t\t\t" + last + value);
-//                 }
-//                 last = current.detected;
-//             }
-//         }
-//     }
-//     /**
-//      *
-//      *
-//      * @param {AMSVariableMap<Sentence>} variables
-//      * @return {Sentence}
-//      */
-//     public invoke(variables: AMSVariableMap<Sentence>): Sentence {
-//         // TODO 実装
-//         console.log("=========================invoked");
-//         console.log(this.invokables);
-//         let invokables = this.invokables;
-//         if (invokables.length === 0) return Sentence.NULL;
-//         let last = invokables[0];
-//         // 前から順番に呼び出していく
-//         for (var i = 0; i < invokables.length - 1; i++) {
-//             // last = last.invoke(i+1番目)
-//             console.log(i);
-//             last = last.invoke();
-//         }
-//         return Sentence.NULL;
-//     }
-// }
+class Paragraph extends Invokable {
+    private notLoaded: (string | null)[];
+    public constructor(iterator: StringIterator) {
+        super();
+        // AA;BB;CCとかがiteratorに流れてくる
+        let sentences = [];
+        while (iterator.hasNext()) {
+            sentences.push(
+                iterator.readBeforeCharWithNest(
+                    ReservedWord.SEPARATOR,
+                    ReservedWord.NEST
+                ).value
+            );
+        }
+        this.notLoaded = sentences;
+        this.set(Array(sentences.length));
+    }
 
-// class Arguments {
-//     private notLoaded: (string | null)[] = [];
-//     private loaded: Sentence[] = [];
-//     public constructor(iterator?: StringIterator) {
-//         if (iterator) {
-//             // AA;BB;CCとかがiteratorに流れてくる
-//             let sentences = [];
-//             while (iterator.hasNext()) {
-//                 sentences.push(
-//                     iterator.readBeforeCharWithNest(";", "{}").value
-//                 );
-//             }
-//             this.notLoaded = sentences;
-//             this.loaded = Array(sentences.length);
-//         }
-//     }
-//     public invokeAt(
-//         index: number,
-//         variables: AMSVariableMap<Sentence>
-//     ): Invokable {
-//         let toLoad;
-//         if (!this.loaded[index] && (toLoad = this.notLoaded[index])) {
-//             // メモ化されていないとき
-//             // let toLoad = this.notLoaded[index];
-//             this.loaded[index] = new Sentence(new StringIterator(toLoad));
-//             this.notLoaded[index] = null;
-//         }
-//         return this.loaded[index].invoke(variables);
-//     }
-//     public get length(): number {
-//         return this.loaded.length;
-//     }
-// }
+    public getAt(index: number): Invokable {
+        let toLoad;
+        if (!super.getAt(index) && (toLoad = this.notLoaded[index])) {
+            this.setAt(
+                index,
+                new Invokable$Builder()
+                    .setIterator(new StringIterator(toLoad))
+                    .setType(Invokable$Type.SENTENCE)
+                    .build()
+            );
+            this.notLoaded[index] = null;
+        }
+        return super.getAt(index);
+    }
+    public invoke(
+        argument: Invokable,
+        variables: AMSVariableMap<Invokable>
+    ): Invokable {
+        let scopedVariables = variables.newScope();
+        for (let current of this.iterator()) {
+            current.invoke(argument, scopedVariables);
+        }
+        return this;
+    }
+    public invokeFinal(variables: AMSVariableMap<Invokable>) {
+        let scopedVariables = variables.newScope();
+        for (let current of this.iterator()) {
+            current.invokeFinal(scopedVariables);
+        }
+        return this;
+    }
+    public getStructureString(indentOffset: string = ""): string {
+        let indenter: string = this.indenter;
+        let result = "";
+        let repeatedIndenter = indentOffset + indenter;
+        for (var i = 0; i < this.notLoaded.length; i++) {
+            let currentText = this.notLoaded[i];
+            let child;
+            if (currentText) {
+                result += repeatedIndenter;
+                result += currentText;
+                result += "\n";
+            } else if ((child = this.getAt(i))) {
+                result += child.getStructureString(indentOffset + indenter);
+            } else {
+                result += Invokable.NULL.getStructureString();
+            }
+        }
+        return `${indentOffset}Paragraph: {
+${result}${indentOffset}}
+`;
+    }
+}
+
+class Sentence extends Invokable {
+    protected indenter = "-   ";
+    public constructor(iterator: StringIterator) {
+        super();
+        // AA:BB とか AA{...Arguments...}BBとかがiteratorに流れてくる
+        // AA => 文字列
+        // /AA => 変数
+        // : => 引数なし呼び出し
+        // {...} => Argumentsを引数として呼び出し
+        let last = "";
+        // console.log("=\t=\t=\t=");
+        while (iterator.hasNext()) {
+            let current = iterator.readBeforeCharWithNest(
+                "/:",
+                "{}",
+                true,
+                last === ReservedWord.NEST_START
+            );
+            // console.log(current);
+            if (last === ReservedWord.NEST_END) last = "";
+            let value = current.value;
+            if (
+                last === ReservedWord.VARIABLE ||
+                last === ReservedWord.INVOKE ||
+                last === ReservedWord.NEST_START ||
+                value.length > 0
+            ) {
+                this.append(
+                    new Invokable$Builder()
+                        .setIterator(new StringIterator(last + value))
+                        .setType(Invokable$Type.WORD)
+                        .build()
+                );
+            }
+            last = current.detected;
+        }
+    }
+    public invoke(
+        argument: Invokable,
+        variables: AMSVariableMap<Invokable>
+    ): Invokable {
+        // sentenceにinvokeは呼ばれることはないはず。
+        return this.invokeFinal(variables);
+    }
+    public invokeFinal(variables: AMSVariableMap<Invokable>): Invokable {
+        let iterator = this.iterator();
+        let iterated = iterator.next();
+        if (!iterated.done) {
+            let last = iterated.value;
+            for (let current of iterator) {
+                last = last.invoke(current, variables);
+            }
+            return last.invokeFinal(variables);
+        } else {
+            // この場合そもそもSentenceオブジェクトが生成されることはない
+            return Invokable.NULL;
+        }
+    }
+    public getStructureString(indentOffset: string = ""): string {
+        let indenter: string = this.indenter;
+        let result = indentOffset + "Sentence: \n";
+        for (let current of this.iterator()) {
+            result += current.getStructureString(indentOffset + indenter);
+        }
+        return result;
+    }
+}
+
+abstract class Word extends Invokable {
+    protected indenter = "+   ";
+}
+
+class Variable extends Word {
+    private name;
+    constructor(name: string) {
+        super();
+        this.name = name;
+    }
+    public invoke(
+        argument: Invokable,
+        variables: AMSVariableMap<Invokable>
+    ): Invokable {
+        let name = this.name;
+        return new (class extends Invokable {
+            public invoke(
+                argument: Invokable,
+                variables: AMSVariableMap<Invokable>
+            ) {
+                if (argument.iterator().next().done) {
+                    if (variables.has(name)) {
+                        // 宣言されてたら返し、
+                        return variables.get(name);
+                    } else {
+                        // 宣言されてなかったらNULLを代入してNULL返し、
+                        variables.set(name, Invokable.NULL);
+                        return Invokable.NULL;
+                    }
+                } else {
+                    // 代入
+                    variables.set(name, argument);
+                    return argument;
+                }
+            }
+            public invokeFinal(variables: AMSVariableMap<Invokable>) {
+                return this;
+            }
+            public getStructureString(indentOffset: string = ""): string {
+                let indenter = this.indenter;
+                return `${indentOffset}VariableReference: 
+${indentOffset}${indenter}/${name}
+`;
+            }
+        })();
+    }
+    public invokeFinal(variables: AMSVariableMap<Invokable>) {
+        return this.invoke(Invokable.NULL, variables);
+    }
+    public getStructureString(indentOffset: string = ""): string {
+        let indenter: string = this.indenter;
+        return `${indentOffset}Variable: 
+${indentOffset}${indenter}/${this.name}
+`;
+    }
+}
+class Text extends Word {
+    private text;
+    public constructor(text: string) {
+        super();
+        this.text = text;
+    }
+    public invoke(argument: Invokable, variables: AMSVariableMap<Invokable>) {
+        return this;
+    }
+    public getStructureString(indentOffset: string = ""): string {
+        let indenter: string = this.indenter;
+        return `${indentOffset}Text: 
+${indentOffset}${indenter}"${this.text}"
+`;
+    }
+}
+const enum Invokable$Type {
+    PARAGRAPH,
+    SENTENCE,
+    WORD,
+}
+class Invokable$Builder {
+    private iterator: StringIterator | null = null;
+    private type: Invokable$Type | null = null;
+    setIterator(iterator: StringIterator) {
+        this.iterator = iterator;
+        return this;
+    }
+    setType(type: Invokable$Type) {
+        this.type = type;
+        return this;
+    }
+    build(): Invokable {
+        if (!this.type) {
+            this.type = Invokable$Type.PARAGRAPH;
+        }
+        if (!this.iterator) throw "iterator must be set.";
+        if (this.type === Invokable$Type.PARAGRAPH) {
+            return new Paragraph(this.iterator);
+        } else if (this.type === Invokable$Type.SENTENCE) {
+            return new Sentence(this.iterator);
+        } else {
+            let first = this.iterator.next().value;
+            if (first === ReservedWord.VARIABLE) {
+                return new Variable(this.iterator.readAll());
+            } else if (first === ReservedWord.NEST_START) {
+                return new Paragraph(this.iterator);
+            } else {
+                let text = first + this.iterator.readAll();
+                if (text.length > 0) {
+                    return new Text(text);
+                } else {
+                    return Invokable.NULL;
+                }
+            }
+        }
+    }
+}
 
 export class AMSParser {
     private static symbols = "{};:/";
@@ -335,7 +539,7 @@ export class AMSParser {
         }
         return false;
     }
-    public static parseAMS(ams: string): string {
+    public static parseAMS(ams: string): Invokable {
         let iterator = new StringIterator(ams);
         let last = "{";
         let ignored = false;
@@ -363,10 +567,9 @@ export class AMSParser {
                 last = current;
             }
         }
-        return formatted;
-        // return new AMSSpan().load(
-        //     new StringIterator(formatted),
-        //     new AMSVariableMap<AbsAMSObject>()
-        // );
+        return new Invokable$Builder()
+            .setIterator(new StringIterator(formatted))
+            .build()
+            .invokeFinal(new AMSVariableMap<Invokable>());
     }
 }
