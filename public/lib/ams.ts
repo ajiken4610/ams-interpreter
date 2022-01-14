@@ -213,13 +213,12 @@ export abstract class Invokable {
             private index = -1;
             public next(): IteratorResult<Invokable> {
                 let current;
-                let hasNext =
-                    (current = outerThis.getAt(++this.index)) !== undefined;
+                let hasNext = (current = outerThis.getAt(++this.index))
+                    ? true
+                    : false;
                 return {
                     done: !hasNext,
-                    value: hasNext
-                        ? outerThis.getAt(this.index)
-                        : Invokable.NULL,
+                    value: hasNext ? (current as Invokable) : Invokable.NULL,
                 };
             }
             [Symbol.iterator](): IterableIterator<Invokable> {
@@ -250,7 +249,7 @@ export abstract class Invokable {
     public invokeFinal(variables: AMSVariableMap<Invokable>): Invokable {
         return this;
     }
-    public getAt(index: number): Invokable {
+    public getAt(index: number): Invokable | null {
         return this.childs[index];
     }
     public set(childs: Invokable[]): void {
@@ -283,7 +282,7 @@ class Paragraph extends Invokable {
         this.set(Array(sentences.length));
     }
 
-    public getAt(index: number): Invokable {
+    public getAt(index: number): Invokable | null {
         let toLoad;
         if (!super.getAt(index) && (toLoad = this.notLoaded[index])) {
             this.setAt(
