@@ -131,7 +131,7 @@ class StringUtils {
         return ret;
     }
 }
-export class ImportedNamespace {
+class ImportedNamespace {
     private imported: string[];
     public constructor(parent?: ImportedNamespace) {
         this.imported = parent ? parent.get().slice() : [];
@@ -143,20 +143,17 @@ export class ImportedNamespace {
         return this.imported;
     }
 }
-export class AMSVariableMap<T> {
+export class VariableMap<T> {
     private map;
-    private parent: AMSVariableMap<T> | null;
+    private parent: VariableMap<T> | null;
     private imported: ImportedNamespace;
-    public constructor(
-        parent?: AMSVariableMap<T>,
-        imported?: ImportedNamespace
-    ) {
+    public constructor(parent?: VariableMap<T>, imported?: ImportedNamespace) {
         this.map = parent ? Object.create(parent.getMap()) : {};
         this.parent = parent ?? null;
         this.imported = imported ?? new ImportedNamespace();
     }
     public newScope() {
-        return new AMSVariableMap<T>(this, this.imported);
+        return new VariableMap<T>(this, this.imported);
     }
     public has(name: string): boolean {
         return name in this.map;
@@ -185,8 +182,8 @@ export class ReservedWord {
     static NEST = "{}";
     static NEST_START = this.NEST.charAt(0);
     static NEST_END = this.NEST.charAt(1);
-    static VARIABLE = "/";
-    static INVOKE = ":";
+    static VARIABLE = "\\";
+    static INVOKER = ":";
     static SEPARATOR = ";";
 }
 
@@ -194,12 +191,12 @@ export abstract class Invokable {
     public static NULL = new (class extends Invokable {
         public invoke(
             argument: Invokable,
-            variables: AMSVariableMap<Invokable>
+            variables: VariableMap<Invokable>
         ): Invokable {
             return this;
         }
         public getStructureString(indentOffset: string = ""): string {
-            return indentOffset + "null\n";
+            return indentOffset + this.indenter + this.TAG + "\n";
         }
         private TAG = "NULL";
     })();
@@ -231,22 +228,24 @@ export abstract class Invokable {
      *
      * @abstract
      * @param {Invokable} argument 引数となる次の要素
-     * @param {AMSVariableMap<Invokable>} variables 実行時に存在する変数
+     * @param {VariableMap<Invokable>} variables 実行時に存在する変数
      * @return {Invokable} 呼び出した結果
      * @memberof Invokable
      */
-    public abstract invoke(
+    public invoke(
         argument: Invokable,
-        variables: AMSVariableMap<Invokable>
-    ): Invokable;
+        variables: VariableMap<Invokable>
+    ): Invokable {
+        return argument;
+    }
     /**
      * 次の要素なしで呼び出されます。
      *
-     * @param {AMSVariableMap<Invokable>} variables 実行時に存在する変数
+     * @param {VariableMap<Invokable>} variables 実行時に存在する変数
      * @return {Invokable} 呼び出した結果
      * @memberof Invokable
      */
-    public invokeFinal(variables: AMSVariableMap<Invokable>): Invokable {
+    public invokeFinal(variables: VariableMap<Invokable>): Invokable {
         return this;
     }
     public getAt(index: number): Invokable | null {
@@ -284,7 +283,10 @@ class Paragraph extends Invokable {
 
     public getAt(index: number): Invokable | null {
         let toLoad;
-        if (!super.getAt(index) && (toLoad = this.notLoaded[index])) {
+        if (
+            !super.getAt(index) &&
+            typeof (toLoad = this.notLoaded[index]) === "string"
+        ) {
             this.setAt(
                 index,
                 new Invokable$Builder()
@@ -298,7 +300,7 @@ class Paragraph extends Invokable {
     }
     public invoke(
         argument: Invokable,
-        variables: AMSVariableMap<Invokable>
+        variables: VariableMap<Invokable>
     ): Invokable {
         let scopedVariables = variables.newScope();
         for (let current of this.iterator()) {
@@ -306,7 +308,7 @@ class Paragraph extends Invokable {
         }
         return this;
     }
-    public invokeFinal(variables: AMSVariableMap<Invokable>) {
+    public invokeFinal(variables: VariableMap<Invokable>) {
         let scopedVariables = variables.newScope();
         for (let current of this.iterator()) {
             current.invokeFinal(scopedVariables);
@@ -349,7 +351,7 @@ class Sentence extends Invokable {
         // console.log("=\t=\t=\t=");
         while (iterator.hasNext()) {
             let current = iterator.readBeforeCharWithNest(
-                "/:",
+                "\\:",
                 "{}",
                 true,
                 last === ReservedWord.NEST_START
@@ -359,7 +361,7 @@ class Sentence extends Invokable {
             let value = current.value;
             if (
                 last === ReservedWord.VARIABLE ||
-                last === ReservedWord.INVOKE ||
+                last === ReservedWord.INVOKER ||
                 last === ReservedWord.NEST_START ||
                 value.length > 0
             ) {
@@ -373,14 +375,7 @@ class Sentence extends Invokable {
             last = current.detected;
         }
     }
-    public invoke(
-        argument: Invokable,
-        variables: AMSVariableMap<Invokable>
-    ): Invokable {
-        // sentenceにinvokeは呼ばれることはないはず。
-        return this.invokeFinal(variables);
-    }
-    public invokeFinal(variables: AMSVariableMap<Invokable>): Invokable {
+    public invokeFinal(variables: VariableMap<Invokable>): Invokable {
         let iterator = this.iterator();
         let iterated = iterator.next();
         if (!iterated.done) {
@@ -416,47 +411,38 @@ class Variable extends Word {
     }
     public invoke(
         argument: Invokable,
-        variables: AMSVariableMap<Invokable>
+        variables: VariableMap<Invokable>
     ): Invokable {
-        let name = this.name;
-        return new (class extends Invokable {
-            public invoke(
-                argument: Invokable,
-                variables: AMSVariableMap<Invokable>
-            ) {
-                if (argument.iterator().next().done) {
-                    if (variables.has(name)) {
-                        // 宣言されてたら返し、
-                        return variables.get(name);
-                    } else {
-                        // 宣言されてなかったらNULLを代入してNULL返し、
-                        variables.set(name, Invokable.NULL);
-                        return Invokable.NULL;
-                    }
-                } else {
-                    // 代入
-                    variables.set(name, argument);
-                    return argument;
-                }
-            }
-            public invokeFinal(variables: AMSVariableMap<Invokable>) {
-                return this;
-            }
-            public getStructureString(indentOffset: string = ""): string {
-                let indenter = this.indenter;
-                return `${indentOffset}VariableReference: 
-${indentOffset}${indenter}/${name}
-`;
-            }
-        })();
-    }
-    public invokeFinal(variables: AMSVariableMap<Invokable>) {
-        return this.invoke(Invokable.NULL, variables);
+        let current = argument.iterator().next();
+        if (current.done) {
+            // 引数なし
+            return variables.has(this.name)
+                ? variables.get(this.name)
+                : Invokable.NULL;
+        } else {
+            // 引数あり
+            let invoked = current.value.invokeFinal(variables);
+            variables.set(this.name, invoked);
+            return invoked;
+        }
     }
     public getStructureString(indentOffset: string = ""): string {
         let indenter: string = this.indenter;
         return `${indentOffset}Variable: 
-${indentOffset}${indenter}/${this.name}
+${indentOffset}${indenter}\\${this.name}
+`;
+    }
+}
+class Invoker extends Word {
+    private notLoaded: string;
+    constructor(sentence: string) {
+        super();
+        this.notLoaded = sentence;
+    }
+    public getStructureString(indentOffset: string = ""): string {
+        let indenter: string = this.indenter;
+        return `${indentOffset}Invoker: 
+${indentOffset}${indenter}:${this.notLoaded}
 `;
     }
 }
@@ -465,9 +451,6 @@ class Text extends Word {
     public constructor(text: string) {
         super();
         this.text = text;
-    }
-    public invoke(argument: Invokable, variables: AMSVariableMap<Invokable>) {
-        return this;
     }
     public getStructureString(indentOffset: string = ""): string {
         let indenter: string = this.indenter;
@@ -507,6 +490,8 @@ class Invokable$Builder {
                 return new Variable(this.iterator.readAll());
             } else if (first === ReservedWord.NEST_START) {
                 return new Paragraph(this.iterator);
+            } else if (first === ReservedWord.INVOKER) {
+                return new Invoker(this.iterator.readAll());
             } else {
                 let text = first + this.iterator.readAll();
                 if (text.length > 0) {
@@ -519,8 +504,8 @@ class Invokable$Builder {
     }
 }
 
-export class AMSParser {
-    private static symbols = "{};:/";
+export class Parser {
+    private static symbols = "{};:\\";
     private static ignores = " \n";
     private static isSymbol(char: string): boolean {
         for (var i = 0; i < this.symbols.length; i++) {
@@ -538,7 +523,7 @@ export class AMSParser {
         }
         return false;
     }
-    public static parseAMS(ams: string): Invokable {
+    public static parse(ams: string): Invokable {
         let iterator = new StringIterator(ams);
         let last = "{";
         let ignored = false;
@@ -546,7 +531,7 @@ export class AMSParser {
         while (iterator.hasNext()) {
             let current = iterator.next().value;
 
-            if (AMSParser.isIgnore(current)) {
+            if (Parser.isIgnore(current)) {
                 // 無視する文字
                 ignored = true;
             } else {
@@ -554,10 +539,7 @@ export class AMSParser {
                 if (ignored) {
                     // 無視している途中なら
                     ignored = false;
-                    if (
-                        !AMSParser.isSymbol(current) &&
-                        !AMSParser.isSymbol(last)
-                    ) {
+                    if (!Parser.isSymbol(current) && !Parser.isSymbol(last)) {
                         // どちらもシンボルではない　＝＞　空白1つ
                         formatted += " ";
                     }
@@ -569,6 +551,6 @@ export class AMSParser {
         return new Invokable$Builder()
             .setIterator(new StringIterator(formatted))
             .build()
-            .invokeFinal(new AMSVariableMap<Invokable>());
+            .invokeFinal(new VariableMap<Invokable>());
     }
 }
