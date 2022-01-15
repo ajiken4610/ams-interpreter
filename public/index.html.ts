@@ -43,7 +43,7 @@ $(() => {
     // }
 
     console.log("====absamsobject====");
-    let parsed1 = AMS.AMSParser.parseAMS(
+    let parsed1 = AMS.Parser.parse(
         // `
         // AAA:BBB;
         // CCC{};
@@ -63,7 +63,7 @@ $(() => {
         // }/FFF:AAA
         // `
         // `/AA/BB:CC`
-        `/abc{hello};/abc{}`
+        `\\abc{hello};;`
     );
     // for (let invokable of parsed1.iterator()) {
     //     console.log(invokable.toString());
